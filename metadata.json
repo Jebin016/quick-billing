@@ -1,5 +1,7 @@
 {
-  "name": "QuickScan POS",
+  "name": "Quick",
   "description": "A local-first retail POS system with barcode scanning, inventory management, and PDF invoice generation.",
-  "requestFramePermissions": ["camera"]
+  "requestFramePermissions": [
+    "camera"
+  ]
 }
