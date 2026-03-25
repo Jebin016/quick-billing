@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { db } from '@/firebase';
+import { db, auth } from '@/firebase';
 import { collection, onSnapshot, doc, setDoc, getDoc, increment, updateDoc } from 'firebase/firestore';
 import { Product, Sale, SaleItem } from '@/types';
 import { Search, ShoppingCart, Trash2, Printer, CheckCircle, AlertCircle, Plus, Minus, Barcode, Camera } from 'lucide-react';
@@ -29,10 +29,10 @@ export default function Checkout() {
   const handleScan = async (e?: React.FormEvent, manualBarcode?: string) => {
     if (e) e.preventDefault();
     const barcode = manualBarcode || barcodeInput;
-    if (!barcode.trim()) return;
+    if (!barcode.trim() || !auth.currentUser) return;
 
     try {
-      const productDoc = await getDoc(doc(db, 'products', barcode));
+      const productDoc = await getDoc(doc(db, 'products', `${barcode}_${auth.currentUser.uid}`));
       if (productDoc.exists()) {
         const product = productDoc.data() as Product;
         setLastScanned(product);
@@ -75,7 +75,6 @@ export default function Checkout() {
 
   const onCameraScan = (barcode: string) => {
     handleScan(undefined, barcode);
-    setShowScanner(false);
   };
 
   const updateQuantity = (productId: string, delta: number) => {
@@ -112,16 +111,16 @@ export default function Checkout() {
     let y = 35;
     sale.items.forEach(item => {
       doc.text(`${item.name}`, 10, y);
-      doc.text(`${item.quantity} x ₹${item.price_at_sale.toFixed(2)}`, 10, y + 4);
-      doc.text(`₹${(item.quantity * item.price_at_sale).toFixed(2)}`, 70, y + 4, { align: 'right' });
+      doc.text(`${item.quantity} x Rs.${item.price_at_sale.toFixed(2)}`, 10, y + 4);
+      doc.text(`Rs.${(item.quantity * item.price_at_sale).toFixed(2)}`, 70, y + 4, { align: 'right' });
       y += 10;
     });
 
     doc.text('------------------------------------------', 10, y);
-    doc.text(`Subtotal: ₹${subtotal.toFixed(2)}`, 70, y + 5, { align: 'right' });
-    doc.text(`Tax (5%): ₹${tax.toFixed(2)}`, 70, y + 9, { align: 'right' });
+    doc.text(`Subtotal: Rs.${subtotal.toFixed(2)}`, 70, y + 5, { align: 'right' });
+    doc.text(`Tax (5%): Rs.${tax.toFixed(2)}`, 70, y + 9, { align: 'right' });
     doc.setFontSize(10);
-    doc.text(`TOTAL: ₹${sale.total_amount.toFixed(2)}`, 70, y + 15, { align: 'right' });
+    doc.text(`TOTAL: Rs.${sale.total_amount.toFixed(2)}`, 70, y + 15, { align: 'right' });
     
     doc.setFontSize(8);
     doc.text('Thank you for shopping!', 40, y + 25, { align: 'center' });
@@ -130,7 +129,7 @@ export default function Checkout() {
   };
 
   const handleCompleteSale = async () => {
-    if (cart.length === 0) return;
+    if (cart.length === 0 || !auth.currentUser) return;
     setIsProcessing(true);
 
     const invoiceId = `INV-${Date.now()}`;
@@ -139,13 +138,14 @@ export default function Checkout() {
       timestamp: new Date().toISOString(),
       total_amount: total,
       payment_method: paymentMethod,
-      items: cart
+      items: cart,
+      uid: auth.currentUser.uid
     };
 
     try {
       // Update stock and record sale
       for (const item of cart) {
-        await updateDoc(doc(db, 'products', item.product_id), {
+        await updateDoc(doc(db, 'products', `${item.product_id}_${auth.currentUser.uid}`), {
           stock_quantity: increment(-item.quantity)
         });
       }

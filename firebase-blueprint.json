@@ -9,9 +9,10 @@
         "name": { "type": "string", "description": "Product name." },
         "price": { "type": "number", "description": "Unit price." },
         "stock_quantity": { "type": "integer", "description": "Current stock level." },
-        "tax_rate": { "type": "number", "description": "Tax percentage (e.g., 5 for 5%)." }
+        "tax_rate": { "type": "number", "description": "Tax percentage (e.g., 5 for 5%)." },
+        "uid": { "type": "string", "description": "Owner user ID." }
       },
-      "required": ["barcode", "name", "price", "stock_quantity"]
+      "required": ["barcode", "name", "price", "stock_quantity", "uid"]
     },
     "Sale": {
       "title": "Sale",
@@ -22,6 +23,7 @@
         "timestamp": { "type": "string", "format": "date-time", "description": "Time of sale." },
         "total_amount": { "type": "number", "description": "Total amount paid." },
         "payment_method": { "type": "string", "enum": ["cash", "card", "upi"], "description": "Method of payment." },
+        "uid": { "type": "string", "description": "Owner user ID." },
         "items": {
           "type": "array",
           "items": {
@@ -35,7 +37,7 @@
           }
         }
       },
-      "required": ["invoice_id", "timestamp", "total_amount", "items"]
+      "required": ["invoice_id", "timestamp", "total_amount", "items", "uid"]
     }
   },
   "firestore": {

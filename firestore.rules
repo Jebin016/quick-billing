@@ -53,38 +53,41 @@ service cloud.firestore {
     // ===============================================================
 
     function isValidProduct(data) {
-      return hasRequiredFields(['barcode', 'name', 'price', 'stock_quantity']) &&
-             hasOnlyAllowedFields(['barcode', 'name', 'price', 'stock_quantity', 'tax_rate']) &&
+      return hasRequiredFields(['barcode', 'name', 'price', 'stock_quantity', 'uid']) &&
+             hasOnlyAllowedFields(['barcode', 'name', 'price', 'stock_quantity', 'tax_rate', 'uid']) &&
              data.barcode is string && data.barcode.size() > 0 && data.barcode.size() < 100 &&
              data.name is string && data.name.size() > 0 && data.name.size() < 200 &&
              data.price is number && data.price >= 0 &&
              data.stock_quantity is int &&
+             data.uid is string &&
              (!('tax_rate' in data) || (data.tax_rate is number && data.tax_rate >= 0));
     }
 
     function isValidSale(data) {
-      return hasRequiredFields(['invoice_id', 'timestamp', 'total_amount', 'payment_method', 'items']) &&
-             hasOnlyAllowedFields(['invoice_id', 'timestamp', 'total_amount', 'payment_method', 'items']) &&
+      return hasRequiredFields(['invoice_id', 'timestamp', 'total_amount', 'payment_method', 'items', 'uid']) &&
+             hasOnlyAllowedFields(['invoice_id', 'timestamp', 'total_amount', 'payment_method', 'items', 'uid']) &&
              data.invoice_id is string &&
              data.timestamp is string &&
              data.total_amount is number && data.total_amount >= 0 &&
              data.payment_method in ['cash', 'card', 'upi'] &&
-             data.items is list && data.items.size() <= 100;
+             data.items is list && data.items.size() <= 100 &&
+             data.uid is string;
     }
 
     // ===============================================================
     // Rules
     // ===============================================================
 
-    match /products/{barcode} {
-      allow read: if isAuthenticated();
-      allow create, update: if isAuthenticated() && isValidProduct(request.resource.data);
-      allow delete: if isAdmin();
+    match /products/{product_id} {
+      allow read: if isAuthenticated() && resource.data.uid == request.auth.uid;
+      allow create: if isAuthenticated() && request.resource.data.uid == request.auth.uid && isValidProduct(request.resource.data);
+      allow update: if isAuthenticated() && resource.data.uid == request.auth.uid && request.resource.data.uid == request.auth.uid && isValidProduct(request.resource.data);
+      allow delete: if isAuthenticated() && resource.data.uid == request.auth.uid;
     }
 
     match /sales/{invoice_id} {
-      allow read: if isAuthenticated();
-      allow create: if isAuthenticated() && isValidSale(request.resource.data);
+      allow read: if isAuthenticated() && resource.data.uid == request.auth.uid;
+      allow create: if isAuthenticated() && request.resource.data.uid == request.auth.uid && isValidSale(request.resource.data);
       allow update, delete: if isAdmin();
     }
 

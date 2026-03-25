@@ -4,6 +4,7 @@ export interface Product {
   price: number;
   stock_quantity: number;
   tax_rate: number;
+  uid?: string;
 }
 
 export interface SaleItem {
@@ -19,4 +20,5 @@ export interface Sale {
   total_amount: number;
   payment_method: 'cash' | 'card' | 'upi';
   items: SaleItem[];
+  uid?: string;
 }

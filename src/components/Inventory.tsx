@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { db } from '@/firebase';
-import { collection, onSnapshot, doc, setDoc, deleteDoc, query, orderBy, getDoc } from 'firebase/firestore';
+import { db, auth } from '@/firebase';
+import { collection, onSnapshot, doc, setDoc, deleteDoc, query, orderBy, getDoc, where } from 'firebase/firestore';
 import { Product } from '@/types';
 import { Plus, Search, Trash2, Edit2, Save, X, Barcode, Package, Camera } from 'lucide-react';
 import { toast } from 'react-hot-toast';
@@ -21,10 +21,12 @@ export default function Inventory() {
     tax_rate: 0
   });
 
+  const [productToDelete, setProductToDelete] = useState<string | null>(null);
+
   const handleLookup = async (barcode: string) => {
-    if (!barcode) return;
+    if (!barcode || !auth.currentUser) return;
     try {
-      const productDoc = await getDoc(doc(db, 'products', barcode));
+      const productDoc = await getDoc(doc(db, 'products', `${barcode}_${auth.currentUser.uid}`));
       if (productDoc.exists()) {
         setLastLookedUp(productDoc.data() as Product);
         playBeep('success');
@@ -38,7 +40,12 @@ export default function Inventory() {
   };
 
   useEffect(() => {
-    const q = query(collection(db, 'products'), orderBy('name'));
+    if (!auth.currentUser) return;
+    const q = query(
+      collection(db, 'products'), 
+      where('uid', '==', auth.currentUser.uid),
+      orderBy('name')
+    );
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const data = snapshot.docs.map(doc => doc.data() as Product);
       setProducts(data);
@@ -47,8 +54,10 @@ export default function Inventory() {
   }, []);
 
   const handleSave = async (product: Product) => {
+    if (!auth.currentUser) return;
     try {
-      await setDoc(doc(db, 'products', product.barcode), product);
+      const productWithUid = { ...product, uid: auth.currentUser.uid };
+      await setDoc(doc(db, 'products', `${product.barcode}_${auth.currentUser.uid}`), productWithUid);
       toast.success('Product saved successfully');
       setIsEditing(null);
       if (!isEditing) {
@@ -59,15 +68,19 @@ export default function Inventory() {
     }
   };
 
-  const handleDelete = async (barcode: string) => {
-    if (window.confirm('Are you sure you want to delete this product?')) {
-      try {
-        await deleteDoc(doc(db, 'products', barcode));
-        toast.success('Product deleted');
-      } catch (error) {
-        toast.error('Failed to delete product');
-      }
+  const confirmDelete = async () => {
+    if (!auth.currentUser || !productToDelete) return;
+    try {
+      await deleteDoc(doc(db, 'products', `${productToDelete}_${auth.currentUser.uid}`));
+      toast.success('Product deleted');
+      setProductToDelete(null);
+    } catch (error) {
+      toast.error('Failed to delete product');
     }
+  };
+
+  const handleDelete = (barcode: string) => {
+    setProductToDelete(barcode);
   };
 
   const filteredProducts = products.filter(p => 
@@ -118,7 +131,6 @@ export default function Inventory() {
         <Scanner 
           onScan={(barcode) => {
             handleLookup(barcode);
-            setShowScanner(false);
           }} 
           onClose={() => setShowScanner(false)} 
         />
@@ -254,6 +266,35 @@ export default function Inventory() {
           </table>
         </div>
       </div>
+
+      {/* Delete Confirmation Modal */}
+      {productToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-3xl p-8 max-w-sm w-full shadow-2xl animate-in zoom-in duration-200">
+            <div className="w-16 h-16 bg-red-100 text-red-600 rounded-2xl flex items-center justify-center mx-auto mb-6">
+              <Trash2 className="w-8 h-8" />
+            </div>
+            <h3 className="text-xl font-bold text-center mb-2">Delete Product?</h3>
+            <p className="text-primary/60 text-center mb-8">
+              This action cannot be undone. Are you sure you want to remove this item from your inventory?
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setProductToDelete(null)}
+                className="flex-1 py-3 rounded-xl font-bold text-primary/60 hover:bg-secondary transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDelete}
+                className="flex-1 py-3 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700 transition-all shadow-lg shadow-red-200"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

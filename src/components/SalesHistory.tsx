@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { db } from '@/firebase';
-import { collection, onSnapshot, query, orderBy, limit } from 'firebase/firestore';
+import { db, auth } from '@/firebase';
+import { collection, onSnapshot, query, orderBy, limit, where } from 'firebase/firestore';
 import { Sale } from '@/types';
 import { format } from 'date-fns';
 import { History, IndianRupee, Calendar, CreditCard } from 'lucide-react';
@@ -9,7 +9,13 @@ export default function SalesHistory() {
   const [sales, setSales] = useState<Sale[]>([]);
 
   useEffect(() => {
-    const q = query(collection(db, 'sales'), orderBy('timestamp', 'desc'), limit(50));
+    if (!auth.currentUser) return;
+    const q = query(
+      collection(db, 'sales'), 
+      where('uid', '==', auth.currentUser.uid),
+      orderBy('timestamp', 'desc'), 
+      limit(50)
+    );
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const data = snapshot.docs.map(doc => doc.data() as Sale);
       setSales(data);
