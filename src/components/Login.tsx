@@ -10,8 +10,13 @@ export default function Login() {
     try {
       await signInWithPopup(auth, provider);
       toast.success('Logged in successfully');
-    } catch (error) {
-      toast.error('Login failed');
+    } catch (error: any) {
+      console.error('Login error:', error);
+      if (error.code === 'auth/unauthorized-domain') {
+        toast.error('Domain not authorized in Firebase Console');
+      } else {
+        toast.error('Login failed: ' + (error.message || 'Unknown error'));
+      }
     }
   };
 
