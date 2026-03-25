@@ -1,0 +1,51 @@
+{
+  "entities": {
+    "Product": {
+      "title": "Product",
+      "description": "A retail product in the inventory.",
+      "type": "object",
+      "properties": {
+        "barcode": { "type": "string", "description": "Unique barcode ID." },
+        "name": { "type": "string", "description": "Product name." },
+        "price": { "type": "number", "description": "Unit price." },
+        "stock_quantity": { "type": "integer", "description": "Current stock level." },
+        "tax_rate": { "type": "number", "description": "Tax percentage (e.g., 5 for 5%)." }
+      },
+      "required": ["barcode", "name", "price", "stock_quantity"]
+    },
+    "Sale": {
+      "title": "Sale",
+      "description": "A completed transaction.",
+      "type": "object",
+      "properties": {
+        "invoice_id": { "type": "string", "description": "Unique invoice ID." },
+        "timestamp": { "type": "string", "format": "date-time", "description": "Time of sale." },
+        "total_amount": { "type": "number", "description": "Total amount paid." },
+        "payment_method": { "type": "string", "enum": ["cash", "card", "upi"], "description": "Method of payment." },
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "product_id": { "type": "string" },
+              "name": { "type": "string" },
+              "quantity": { "type": "integer" },
+              "price_at_sale": { "type": "number" }
+            }
+          }
+        }
+      },
+      "required": ["invoice_id", "timestamp", "total_amount", "items"]
+    }
+  },
+  "firestore": {
+    "/products/{barcode}": {
+      "schema": "Product",
+      "description": "Inventory products indexed by barcode."
+    },
+    "/sales/{invoice_id}": {
+      "schema": "Sale",
+      "description": "Completed sales records."
+    }
+  }
+}
