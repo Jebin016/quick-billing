@@ -1,12 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { db, auth } from '@/firebase';
-import { collection, onSnapshot, query, orderBy, limit, where } from 'firebase/firestore';
+import { collection, onSnapshot, query, orderBy, limit, where, deleteDoc, doc } from 'firebase/firestore';
 import { Sale } from '@/types';
 import { format } from 'date-fns';
-import { History, IndianRupee, Calendar, CreditCard } from 'lucide-react';
+import { History, IndianRupee, Calendar, Trash2 } from 'lucide-react';
+import { toast } from 'react-hot-toast';
 
 export default function SalesHistory() {
   const [sales, setSales] = useState<Sale[]>([]);
+  const [saleToDelete, setSaleToDelete] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     if (!auth.currentUser) return;
@@ -17,11 +20,25 @@ export default function SalesHistory() {
       limit(50)
     );
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const data = snapshot.docs.map(doc => doc.data() as Sale);
+      const data = snapshot.docs.map(doc => ({ ...doc.data(), uid: doc.id } as Sale));
       setSales(data);
     });
     return () => unsubscribe();
   }, []);
+
+  const handleDeleteSale = async () => {
+    if (!saleToDelete) return;
+    setIsDeleting(true);
+    try {
+      await deleteDoc(doc(db, 'sales', saleToDelete));
+      toast.success('Sale deleted');
+      setSaleToDelete(null);
+    } catch (error) {
+      toast.error('Failed to delete sale');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   const totalRevenue = sales.reduce((sum, sale) => sum + sale.total_amount, 0);
 
@@ -40,8 +57,15 @@ export default function SalesHistory() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {sales.map((sale) => (
-          <div key={sale.invoice_id} className="bg-white p-6 rounded-3xl shadow-sm border border-primary/5 space-y-4">
-            <div className="flex justify-between items-start">
+          <div key={sale.invoice_id} className="bg-white p-6 rounded-3xl shadow-sm border border-primary/5 space-y-4 relative group">
+            <button 
+              onClick={() => setSaleToDelete(sale.invoice_id)}
+              className="absolute top-4 right-4 p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all md:opacity-0 md:group-hover:opacity-100"
+              title="Delete Sale"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+            <div className="flex justify-between items-start pr-8">
               <div>
                 <p className="text-xs font-bold text-primary/40 uppercase">{sale.invoice_id}</p>
                 <p className="text-sm font-medium text-primary/60 flex items-center gap-1">
@@ -75,6 +99,39 @@ export default function SalesHistory() {
         <div className="h-64 flex flex-col items-center justify-center text-primary/20 gap-4">
           <History className="w-16 h-16" />
           <p className="font-bold">No sales recorded yet</p>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {saleToDelete && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl p-8 max-w-sm w-full shadow-2xl animate-in zoom-in duration-200">
+            <div className="w-16 h-16 bg-red-100 text-red-600 rounded-2xl flex items-center justify-center mb-6 mx-auto">
+              <Trash2 className="w-8 h-8" />
+            </div>
+            <h3 className="text-2xl font-black text-primary text-center mb-2">Delete Sale?</h3>
+            <p className="text-primary/60 text-center mb-8">This will permanently remove this sale record. This action cannot be undone.</p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setSaleToDelete(null)}
+                disabled={isDeleting}
+                className="flex-1 py-3 rounded-xl font-bold text-primary/60 hover:bg-secondary transition-all disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteSale}
+                disabled={isDeleting}
+                className="flex-1 py-3 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700 transition-all shadow-lg shadow-red-200 disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {isDeleting ? (
+                  <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                ) : (
+                  'Delete'
+                )}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

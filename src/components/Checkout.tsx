@@ -16,6 +16,7 @@ export default function Checkout() {
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'card' | 'upi'>('cash');
   const [isProcessing, setIsProcessing] = useState(false);
   const [showScanner, setShowScanner] = useState(false);
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   // Auto-focus the barcode input
@@ -174,6 +175,15 @@ export default function Checkout() {
               Current Order
             </h2>
             <div className="flex items-center gap-2 w-full sm:w-auto">
+              {cart.length > 0 && (
+                <button
+                  onClick={() => setShowClearConfirm(true)}
+                  className="p-2 text-red-500 hover:bg-red-50 rounded-xl transition-all"
+                  title="Clear Cart"
+                >
+                  <Trash2 className="w-5 h-5" />
+                </button>
+              )}
               <button
                 onClick={() => setShowScanner(true)}
                 className="p-2 bg-accent text-white rounded-xl hover:bg-primary transition-all shadow-md flex items-center gap-2 px-3 md:px-4"
@@ -255,7 +265,7 @@ export default function Checkout() {
                     </div>
                     <button 
                       onClick={() => removeFromCart(item.product_id)}
-                      className="p-2 text-red-400 hover:text-red-600 md:opacity-0 md:group-hover:opacity-100 transition-all"
+                      className="p-2 text-red-400 hover:text-red-600 transition-all"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
@@ -322,6 +332,37 @@ export default function Checkout() {
           )}
         </button>
       </div>
+
+      {/* Clear Cart Confirmation Modal */}
+      {showClearConfirm && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl p-8 max-w-sm w-full shadow-2xl animate-in zoom-in duration-200">
+            <div className="w-16 h-16 bg-red-100 text-red-600 rounded-2xl flex items-center justify-center mb-6 mx-auto">
+              <Trash2 className="w-8 h-8" />
+            </div>
+            <h3 className="text-2xl font-black text-primary text-center mb-2">Clear Cart?</h3>
+            <p className="text-primary/60 text-center mb-8">This will remove all items from your current order. This action cannot be undone.</p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowClearConfirm(false)}
+                className="flex-1 py-3 rounded-xl font-bold text-primary/60 hover:bg-secondary transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  setCart([]);
+                  setShowClearConfirm(false);
+                  toast.success('Cart cleared');
+                }}
+                className="flex-1 py-3 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700 transition-all shadow-lg shadow-red-200"
+              >
+                Clear All
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

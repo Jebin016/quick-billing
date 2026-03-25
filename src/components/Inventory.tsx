@@ -22,6 +22,7 @@ export default function Inventory() {
   });
 
   const [productToDelete, setProductToDelete] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const handleLookup = async (barcode: string) => {
     if (!barcode || !auth.currentUser) return;
@@ -70,12 +71,15 @@ export default function Inventory() {
 
   const confirmDelete = async () => {
     if (!auth.currentUser || !productToDelete) return;
+    setIsDeleting(true);
     try {
       await deleteDoc(doc(db, 'products', `${productToDelete}_${auth.currentUser.uid}`));
       toast.success('Product deleted');
       setProductToDelete(null);
     } catch (error) {
       toast.error('Failed to delete product');
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -281,15 +285,21 @@ export default function Inventory() {
             <div className="flex gap-3">
               <button
                 onClick={() => setProductToDelete(null)}
-                className="flex-1 py-3 rounded-xl font-bold text-primary/60 hover:bg-secondary transition-all"
+                disabled={isDeleting}
+                className="flex-1 py-3 rounded-xl font-bold text-primary/60 hover:bg-secondary transition-all disabled:opacity-50"
               >
                 Cancel
               </button>
               <button
                 onClick={confirmDelete}
-                className="flex-1 py-3 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700 transition-all shadow-lg shadow-red-200"
+                disabled={isDeleting}
+                className="flex-1 py-3 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700 transition-all shadow-lg shadow-red-200 disabled:opacity-50 flex items-center justify-center gap-2"
               >
-                Delete
+                {isDeleting ? (
+                  <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                ) : (
+                  'Delete'
+                )}
               </button>
             </div>
           </div>
